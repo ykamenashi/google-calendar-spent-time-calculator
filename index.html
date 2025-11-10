@@ -3,6 +3,7 @@
 
 <head>
   <title>Google Calendarの予定合計を計算するツール</title>
+  <link rel="icon" href="taikin.png " type="image/x-icon">
   <meta charset="utf-8" />
   <script>
     function loadKeywords() {
@@ -17,18 +18,49 @@
       alert('登録しました');
     }
   </script>
+  <style type="text/css">
+    #authorize_button {
+      font-size: 150%;
+      padding-left: 30px;
+      padding-right: 30px;
+    }
+
+    /* ライトモードのスタイル（デフォルト） */
+    body {
+      background-color: #fff;
+      color: #000;
+    }
+    pre {
+      font-size: 120%;
+    }
+
+    /* ダークモードのスタイル */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #333;
+        color: #eee;
+      }
+
+      /* 必要に応じて他の要素のスタイルも記述 */
+      a {
+        color: #add8e6;
+        /* 例：ダークモード時のリンク色 */
+      }
+    }
+  </style>
 </head>
 
 <body onload="loadKeywords()">
   <p>カレンダーイベント検索キーワード(改行区切り)</p>
-  <textarea id="keyword" style="width:200px;height:150px;"></textarea><br>
-  <button id="store_keywords" onclick="storeKeywords()">Store Keywords</button><br><br>
+  <textarea id="keyword" style="width:200px;height:150px;display: none;"></textarea><br>
+  <button onclick="document.getElementById('keyword').style.display='block'">キーワード編集</button>
+  <button id="store_keywords" onclick="storeKeywords()">キーワード登録</button><br><br>
 
   <!--Add buttons to initiate auth sequence and sign out-->
   <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
-  <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button>
+  <!-- <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button> -->
 
-  <pre id="content" style="white-space: pre-wrap;"></pre>
+  <pre id="content" style="white-space: pre-line;"></pre>
 
   <script type="text/javascript">
     /* exported gapiLoaded */
@@ -37,7 +69,7 @@
     /* exported handleSignoutClick */
 
     // TODO(developer): Set to client ID and API key from the Developer Console
-    const CLIENT_ID = '597850764931-ueqrduc5g36vlrp8bhl55v9nmmp4hcc0.apps.googleusercontent.com';
+    const CLIENT_ID = '{YOUR_CLIENT_ID}.apps.googleusercontent.com';
     const API_KEY = '<YOUR_API_KEY>';
 
     // Discovery doc URL for APIs used by the quickstart
@@ -52,7 +84,7 @@
     let gisInited = false;
 
     document.getElementById('authorize_button').style.visibility = 'hidden';
-    document.getElementById('signout_button').style.visibility = 'hidden';
+    //document.getElementById('signout_button').style.visibility = 'hidden';
 
     /**
      * Callback after api.js is loaded.
@@ -104,7 +136,7 @@
         if (resp.error !== undefined) {
           throw (resp);
         }
-        document.getElementById('signout_button').style.visibility = 'visible';
+        //document.getElementById('signout_button').style.visibility = 'visible';
         document.getElementById('authorize_button').innerText = 'Refresh';
         await listUpcomingEvents();
       };
@@ -145,10 +177,12 @@
       try {
         const request = {
           'calendarId': 'primary',
-          'timeMin': (new Date((new Date()).toISOString().split('T')[0] + 'T00:00:00+09:00')).toISOString(),
-          'timeMax': (new Date((new Date()).toISOString().split('T')[0] + 'T23:59:59+09:00')).toISOString(),
+          'timeMin': (new Date().toLocaleString().split(' ')[0].replace(/\//g, '-') + 'T00:00:00+09:00'),
+          'timeMax': (new Date().toLocaleString().split(' ')[0].replace(/\//g, '-') + 'T23:59:59+09:00'),
+          'timeZone': 'Asia/Tokyo',
           'showDeleted': false,
           'singleEvents': true,
+          //'maxResults': 10,
           'orderBy': 'startTime',
         };
         response = await gapi.client.calendar.events.list(request);
@@ -163,38 +197,50 @@
         return;
       }
       // Flatten to string to display
-      /*
       const output = events.reduce(
         (str, event) => `${str}${event.summary} (${event.start.dateTime || event.start.date})\n`,
         'Events:\n');
-      document.getElementById('content').innerText = output;
-      */
+      //document.getElementById('content').innerText = output;
       const keywords = document.getElementById('keyword').value.split('\n').filter(Boolean);
+      //console.log(events);
+      let totalTimeStr = "";
+      let totalTimeBuf = 0;
       for (let i = 0, max = keywords.length; i < max; i++) {
-        const keyword = keywords[i];
+        let keyword = keywords[i].replace(/\r?\n/g, '');
         let buf = 0;
-        const o1 = events.filter(event => event.summary.includes(keyword));
+        let o1 = events.filter(event => event.summary.includes(keyword));
+        //let o1 = events.filter(event => event.summary.toUpperCase().includes(keyword));
         if (o1.length != 0) {
-          for (let i = 0, max = o1.length; i < max; i++) {
-            buf = buf + (new Date(o1[i].end.dateTime) - new Date(o1[i].start.dateTime));
+          // キーワードにマッチするイベントのタイトルリストを作成
+          let eventTitles = [];
+
+          for (let j = 0, max1 = o1.length; j < max1; j++) {
+            if (
+              Number.isNaN((new Date(o1[j].end.dateTime) - new Date(o1[j].start.dateTime)))
+            ) { continue; };
+            buf = buf + (new Date(o1[j].end.dateTime) - new Date(o1[j].start.dateTime));
+
+            // イベントタイトルをリストに追加（重複を避ける）
+            if (!eventTitles.includes(o1[j].summary)) {
+              eventTitles.push(o1[j].summary);
+            }
+            //console.log(keyword + ' ' + buf);
           }
           const dt = new Date(buf);
+          totalTimeBuf += buf;
           const humanReadableFormat = dt.getUTCHours().toString().padStart(2, '0') + ':' + dt.getUTCMinutes().toString().padStart(2, '0');
-          document.getElementById('content').innerText += '\n' + 'Total time spent on ' + keyword + ' is ' + humanReadableFormat;
+          //document.getElementById('content').innerText += '\n' + 'Total time spent on ' + keyword + ' is ' + humanReadableFormat;
+          document.getElementById('content').innerText += '\n' + humanReadableFormat + '　' + keyword;
+
+          // 子項目としてイベントタイトルを追加
+          for (let k = 0; k < eventTitles.length; k++) {
+            document.getElementById('content').innerText += '\n　　- ' + eventTitles[k];
+          }
         }
       }
-      /*
-      const keyword = 'test';
-      let buf = 0;
-      const o1 = events.filter(event => event.summary.includes(keyword));
-      for (let i = 0, max = o1.length; i < max; i++) {
-        buf = buf + (new Date(o1[i].end.dateTime) - new Date(o1[i].start.dateTime));
-      }
-      console.log(buf);
-      const dt = new Date(buf);
-      const humanReadableFormat = dt.getUTCHours().toString().padStart(2, '0') + ':' + dt.getUTCMinutes().toString().padStart(2, '0');
-      document.getElementById('content').innerText = output + '\n' + 'Total time spent on ' + keyword + ' is ' + humanReadableFormat;
-      */
+      const tdt = new Date(totalTimeBuf);
+      const totalHumanReadableFormat = tdt.getUTCHours().toString().padStart(2, '0') + ':' + tdt.getUTCMinutes().toString().padStart(2, '0');
+      document.getElementById('content').innerText += '\n\n' + 'All time spent on:' + totalHumanReadableFormat;
     }
   </script>
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
