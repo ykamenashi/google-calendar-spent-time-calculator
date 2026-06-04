@@ -19,6 +19,15 @@
     }
   </script>
   <style type="text/css">
+    .button-container {
+      display: flex;
+      width: 100%;
+      gap: 15px;
+      justify-content: space-between;
+    }
+    .button-container button:nth-child(2){
+      margin-left: auto;
+    }
     #authorize_button {
       font-size: 150%;
       padding-left: 30px;
@@ -52,13 +61,15 @@
 
 <body onload="loadKeywords()">
   <p>カレンダーイベント検索キーワード(改行区切り)</p>
-  <textarea id="keyword" style="width:200px;height:150px;display: none;"></textarea><br>
-  <button onclick="document.getElementById('keyword').style.display='block'">キーワード編集</button>
-  <button id="store_keywords" onclick="storeKeywords()">キーワード登録</button><br><br>
-
   <!--Add buttons to initiate auth sequence and sign out-->
-  <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
-  <!-- <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button> -->
+  <div class=""button-container">
+    <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
+    <!-- <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button> -->
+    <button onclick="document.getElementById('keyword').style.display='block'">キーワード編集</button>
+    <button id="store_keywords" onclick="storeKeywords()">キーワード登録</button>
+  </div>
+  <textarea id="keyword" style="width:200px;height:150px;display: none;"></textarea><br>
+
 
   <pre id="content" style="white-space: pre-line;"></pre>
 
